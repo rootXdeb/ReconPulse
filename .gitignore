@@ -1,0 +1,7 @@
+*.o
+reconpulse
+reconpulse.exe
+*.json
+*.html
+!web/index.html
+.DS_Store
