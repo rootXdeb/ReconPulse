@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RECONPULSE // console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0b0a;
+    --bg-2: #101210;
+    --bg-3: #0c0e0c;
+    --panel: #0e100e;
+    --line: #262b24;
+    --line-hi: #3b4237;
+    --fg: #e8ece4;
+    --dim: #79856f;
+    --dimmer: #4d564494;
+    --signal: #5cf275;
+    --signal-dim: #2f8f43;
+    --amber: #ffb454;
+    --crit: #ff5555;
+    --high: #ff9d42;
+    --med: #ffd23f;
+    --low: #57c7ff;
+    --info: #8a94a6;
+    --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: var(--mono);
+    background: var(--bg);
+    color: var(--fg);
+    margin: 0;
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
+    background-image:
+      repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,.22) 2px 3px);
+  }
+  a { color: var(--signal); }
+  ::selection { background: var(--signal); color: #04120a; }
+
+  /* ---- top command bar ---- */
+  .bar {
+    display: flex; align-items: baseline; gap: .9rem; flex-wrap: wrap;
+    padding: .85rem 1.2rem;
+    border-bottom: 2px solid var(--line-hi);
+    background: var(--bg-2);
+  }
+  .brand { font-weight: 800; font-size: 1.15rem; letter-spacing: .16em; color: var(--fg); }
+  .brand b { color: var(--signal); }
+  .brand .cur { color: var(--signal); animation: blink 1.1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .bar .tag {
+    font-size: .68rem; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--dim); border: 1px solid var(--line); padding: .12rem .5rem;
+  }
+  .bar .ver { margin-left: auto; color: var(--dim); font-size: .72rem; letter-spacing: .1em; }
+
+  /* ---- authorization strip ---- */
+  .rules {
+    display: flex; align-items: center; gap: .6rem;
+    padding: .5rem 1.2rem;
+    border-bottom: 1px solid var(--line);
+    background: repeating-linear-gradient(45deg, rgba(255,180,84,.06) 0 10px, transparent 10px 20px);
+    color: var(--amber); font-size: .74rem; letter-spacing: .04em;
+  }
+  .rules svg { flex-shrink: 0; }
+
+  /* ---- layout ---- */
+  .grid { display: grid; grid-template-columns: 360px 1fr; gap: 0; align-items: stretch; }
+  .col { min-width: 0; }
+  .col.left { border-right: 2px solid var(--line-hi); }
+
+  section { border-bottom: 1px solid var(--line); padding: 1.1rem 1.2rem; }
+  .sec-h {
+    display: flex; align-items: center; gap: .5rem;
+    font-size: .7rem; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--dim); margin: 0 0 .9rem;
+  }
+  .sec-h::before { content: "\25DA"; color: var(--signal-dim); }
+
+  /* ---- form ---- */
+  label.f { display: block; font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); margin: .95rem 0 .35rem; }
+  label.f:first-of-type { margin-top: 0; }
+  input[type=text], input[type=number], select {
+    width: 100%; padding: .6rem .7rem;
+    background: var(--bg-3); border: 1px solid var(--line);
+    border-radius: 0; color: var(--fg); font-family: var(--mono);
+    font-size: .86rem; transition: border-color .12s, box-shadow .12s;
+  }
+  input::placeholder { color: var(--dimmer); }
+  input:focus, select:focus, .chk:focus-within {
+    outline: none; border-color: var(--signal);
+    box-shadow: inset 0 0 0 1px var(--signal);
+  }
+  /* target field with a terminal prompt chevron */
+  .field { position: relative; display: flex; align-items: center; }
+  .field .chev { position: absolute; left: .6rem; color: var(--signal); font-weight: 800; pointer-events: none; }
+  .field input { padding-left: 1.5rem; }
+  .hint { font-size: .66rem; color: var(--dim); margin-top: .35rem; letter-spacing: .02em; }
+  .pair { display: flex; gap: .5rem; align-items: center; }
+  .pair span { color: var(--dim); }
+  select {
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--dim) 50%), linear-gradient(135deg, var(--dim) 50%, transparent 50%);
+    background-position: calc(100% - 16px) 55%, calc(100% - 11px) 55%;
+    background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+  }
+  .chk { display: flex; align-items: flex-start; gap: .6rem; margin-top: .9rem; font-size: .8rem; color: var(--fg); cursor: pointer; }
+  .chk input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--signal); flex-shrink: 0; cursor: pointer; }
+  .chk.auth { border: 1px solid var(--amber); padding: .55rem .6rem; color: var(--amber); }
+
+  button.run {
+    width: 100%; margin-top: 1.3rem; padding: .85rem;
+    border: 2px solid var(--signal); border-radius: 0;
+    background: transparent; color: var(--signal);
+    font-family: var(--mono); font-weight: 800; font-size: .84rem;
+    letter-spacing: .18em; text-transform: uppercase; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: .5rem;
+    transition: background .12s, color .12s, box-shadow .12s, transform .06s;
+  }
+  button.run::before { content: "["; opacity: .55; }
+  button.run::after  { content: "]"; opacity: .55; }
+  button.run:hover:not(:disabled) { background: var(--signal); color: #04120a; box-shadow: 0 0 18px rgba(92,242,117,.35); }
+  button.run:active:not(:disabled) { transform: translateY(1px); }
+  button.run:disabled { border-color: var(--line); color: var(--dim); cursor: not-allowed; }
+
+  /* ---- status prompt ---- */
+  .prompt {
+    display: flex; align-items: center; gap: .6rem;
+    font-size: .82rem; color: var(--dim);
+    border: 1px solid var(--line); background: var(--bg-3);
+    padding: .6rem .75rem; margin-bottom: 1rem;
+  }
+  .prompt .lead { color: var(--signal); font-weight: 700; }
+  .prompt .txt { color: var(--fg); word-break: break-word; }
+  .dot { width: 8px; height: 8px; flex-shrink: 0; background: var(--line-hi); }
+  .dot.running { background: var(--amber); animation: pulse 1s steps(2) infinite; }
+  .dot.done { background: var(--signal); }
+  .dot.err { background: var(--crit); }
+  @keyframes pulse { 50% { opacity: .25; } }
+
+  .scan-track { height: 2px; background: var(--line); overflow: hidden; margin-bottom: 1.1rem; display: none; }
+  .scan-track.on { display: block; }
+  .scan-track i { display: block; height: 100%; width: 35%; background: var(--signal); animation: sweep 1.1s linear infinite; }
+  @keyframes sweep { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+
+  /* ---- stat readouts ---- */
+  .stats { grid-template-columns: repeat(6, 1fr); gap: 0; margin-bottom: 1.3rem; border: 1px solid var(--line); display: none; }
+  .stats.on { display: grid; }
+  .stat { padding: .7rem .5rem; text-align: center; border-right: 1px solid var(--line); }
+  .stat:last-child { border-right: none; }
+  .stat .n { font-size: 1.35rem; font-weight: 800; line-height: 1; }
+  .stat .l { font-size: .58rem; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); margin-top: .35rem; }
+  .stat.crit .n { color: var(--crit); } .stat.high .n { color: var(--high); }
+  .stat.med .n { color: var(--med); } .stat.low .n { color: var(--low); }
+  .stat.up .n { color: var(--signal); } .stat.ports .n { color: var(--fg); }
+
+  /* ---- host blocks ---- */
+  .host { border: 1px solid var(--line-hi); margin-bottom: 1rem; background: var(--panel); }
+  .host > .hh {
+    display: flex; align-items: center; gap: .55rem;
+    padding: .65rem .85rem; border-bottom: 1px solid var(--line);
+    background: var(--bg-2); font-weight: 700; letter-spacing: .04em;
+  }
+  .host > .hh::before { content: "\25C9"; color: var(--signal); }
+  .host > .hh .meta { margin-left: auto; font-size: .68rem; color: var(--dim); letter-spacing: .08em; font-weight: 500; }
+  .host .body { padding: .5rem .85rem .85rem; }
+
+  table { width: 100%; border-collapse: collapse; margin: .35rem 0 .2rem; }
+  th { text-align: left; padding: .4rem .5rem; font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); border-bottom: 1px solid var(--line); }
+  td { text-align: left; padding: .42rem .5rem; border-bottom: 1px dotted var(--line); font-size: .82rem; }
+  tr:last-child td { border-bottom: none; }
+  td.port { color: var(--signal); font-weight: 700; }
+  td.svc { color: var(--amber); }
+  td.ver { color: var(--dim); word-break: break-word; }
+
+  .sub-h { font-size: .64rem; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); margin: 1rem 0 .5rem; }
+  .clean { color: var(--signal-dim); font-size: .78rem; padding: .3rem 0; }
+
+  /* ---- findings as log rows ---- */
+  .find { border-left: 3px solid var(--info); background: var(--bg-3); padding: .6rem .75rem; margin: .5rem 0; }
+  .find.crit { border-left-color: var(--crit); }
+  .find.high { border-left-color: var(--high); }
+  .find.med { border-left-color: var(--med); }
+  .find.low { border-left-color: var(--low); }
+  .find .top { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+  .tag { font-size: .6rem; font-weight: 800; letter-spacing: .08em; padding: .12rem .45rem; color: #04120a; }
+  .tag.crit { background: var(--crit); color: #fff; }
+  .tag.high { background: var(--high); color: #1a0d00; }
+  .tag.med { background: var(--med); }
+  .tag.low { background: var(--low); color: #001523; }
+  .tag.info { background: var(--info); color: #fff; }
+  .find .ttl { font-weight: 700; color: var(--fg); }
+  .find .id { color: var(--dim); font-size: .68rem; letter-spacing: .06em; }
+  .find dl { margin: .45rem 0 0; display: grid; grid-template-columns: max-content 1fr; gap: .15rem .7rem; }
+  .find dt { color: var(--dim); font-size: .64rem; letter-spacing: .1em; text-transform: uppercase; padding-top: .1rem; }
+  .find dd { margin: 0; color: #c3cbba; font-size: .8rem; word-break: break-word; }
+
+  /* ---- history ---- */
+  .hist-item {
+    display: flex; justify-content: space-between; gap: .5rem; align-items: center;
+    padding: .45rem .5rem; border: 1px solid var(--line); border-top: none;
+    font-size: .76rem; color: var(--dim); cursor: pointer; transition: background .12s, color .12s;
+  }
+  .hist-item:first-child { border-top: 1px solid var(--line); }
+  .hist-item:hover { background: var(--bg-2); color: var(--fg); }
+  .hist-item .t { color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hist-item .s { flex-shrink: 0; font-size: .6rem; letter-spacing: .1em; text-transform: uppercase; }
+  .hist-item .s.done { color: var(--signal); }
+  .hist-item .s.running { color: var(--amber); }
+
+  .empty { color: var(--dim); font-size: .82rem; padding: 2.5rem 1rem; text-align: center; border: 1px dashed var(--line); }
+  .empty .big { color: var(--line-hi); font-size: 1.6rem; letter-spacing: .3em; display: block; margin-bottom: .6rem; }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--line-hi); }
+  ::-webkit-scrollbar-track { background: var(--bg-2); }
+
+  @media (max-width: 860px) {
+    .grid { grid-template-columns: 1fr; }
+    .col.left { border-right: none; border-bottom: 2px solid var(--line-hi); }
+    .stats { grid-template-columns: repeat(3, 1fr); }
+    .stat:nth-child(3) { border-right: none; }
+    .stat:nth-child(n+4) { border-top: 1px solid var(--line); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span class="brand"><b>RECON</b>PULSE<span class="cur">_</span></span>
+  <span class="tag">vuln-verify</span>
+  <span class="tag">local console</span>
+  <span class="ver" id="verline">// awaiting input</span>
+</div>
+
+<div class="rules">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.29 3.86 1.82 18.02A2 2 0 0 0 3.53 21h16.94a2 2 0 0 0 1.71-2.98L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+  ROE // scan only assets you own or hold written authorization to test.
+</div>
+
+<div class="grid">
+  <!-- ===== COMMAND COLUMN ===== -->
+  <div class="col left">
+    <section>
+      <h2 class="sec-h">Command</h2>
+      <form id="scanForm">
+        <label class="f" for="target">Network — CIDR range</label>
+        <div class="field"><span class="chev">&rsaquo;</span>
+          <input type="text" id="target" placeholder="192.168.0.0/24" autocomplete="off" spellcheck="false" required>
+        </div>
+        <div class="hint">enumerates every live host on the range — ARP / ICMP / neighbor-cache discovery</div>
+
+        <label class="f">Port range</label>
+        <div class="pair">
+          <input type="number" id="portStart" value="1" min="1" max="65535" aria-label="Start port">
+          <span>&rarr;</span>
+          <input type="number" id="portEnd" value="1024" min="1" max="65535" aria-label="End port">
+        </div>
+
+        <div class="pair" style="gap:.7rem; margin-top:.4rem;">
+          <div style="flex:1;">
+            <label class="f" for="threads">Threads</label>
+            <input type="number" id="threads" value="50" min="1" max="500">
+          </div>
+          <div style="flex:1;">
+            <label class="f" for="timeout">Timeout ms</label>
+            <input type="number" id="timeout" value="800" min="50" max="10000">
+          </div>
+        </div>
+
+        <label class="chk">
+          <input type="checkbox" id="vulnChecks" checked>
+          <span>Run vulnerability verification modules</span>
+        </label>
+        <label class="chk auth">
+          <input type="checkbox" id="authConfirm" required>
+          <span>I am authorized to scan this target</span>
+        </label>
+
+        <button type="submit" class="run" id="startBtn">&#9654; sweep network</button>
+      </form>
+    </section>
+
+    <section>
+      <h2 class="sec-h">Session history</h2>
+      <div id="historyList"><div class="empty" style="padding:1.4rem .5rem;">no scans this session</div></div>
+    </section>
+  </div>
+
+  <!-- ===== STREAM COLUMN ===== -->
+  <div class="col">
+    <section style="border-bottom:none;">
+      <div class="prompt">
+        <span class="dot" id="statusDot"></span>
+        <span class="lead">reconpulse&gt;</span>
+        <span class="txt" id="statusText">idle — configure a scan and execute</span>
+      </div>
+      <div class="scan-track" id="scanTrack"><i></i></div>
+
+      <div class="stats" id="stats">
+        <div class="stat up"><div class="n" id="statHosts">0</div><div class="l">Hosts</div></div>
+        <div class="stat ports"><div class="n" id="statPorts">0</div><div class="l">Ports</div></div>
+        <div class="stat crit"><div class="n" id="statCrit">0</div><div class="l">Crit</div></div>
+        <div class="stat high"><div class="n" id="statHigh">0</div><div class="l">High</div></div>
+        <div class="stat med"><div class="n" id="statMed">0</div><div class="l">Med</div></div>
+        <div class="stat low"><div class="n" id="statLow">0</div><div class="l">Low</div></div>
+      </div>
+
+      <div id="results">
+        <div class="empty">
+          <span class="big">[ &ndash; &ndash; &ndash; ]</span>
+          no results yet — configure a scan on the left and execute.
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = (s === undefined || s === null) ? '' : String(s);
+  return d.innerHTML;
+}
+function sevClass(sev) {
+  return { CRITICAL: 'crit', HIGH: 'high', MEDIUM: 'med', LOW: 'low' }[sev] || 'info';
+}
+
+let pollTimer = null;
+
+document.getElementById('scanForm').addEventListener('submit', function (e) {
+  e.preventDefault();
+  const body = {
+    target: document.getElementById('target').value.trim(),
+    port_start: parseInt(document.getElementById('portStart').value, 10),
+    port_end: parseInt(document.getElementById('portEnd').value, 10),
+    scan_type: 'connect',
+    threads: parseInt(document.getElementById('threads').value, 10),
+    timeout_ms: parseInt(document.getElementById('timeout').value, 10),
+    vuln_checks: document.getElementById('vulnChecks').checked,
+  };
+  if (!body.target) return;
+
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('verline').textContent = '// scan dispatched';
+  setStatus('running', 'dispatching scan -> ' + body.target + ' ...');
+
+  fetch('/api/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    .then(r => r.json())
+    .then(data => {
+      if (data.job_id) pollJob(data.job_id);
+      else { setStatus('err', 'backend rejected the job'); document.getElementById('startBtn').disabled = false; }
+    })
+    .catch(() => { setStatus('err', 'failed to reach the scanner backend'); document.getElementById('startBtn').disabled = false; });
+});
+
+function setStatus(cls, text) {
+  document.getElementById('statusDot').className = 'dot ' + cls;
+  document.getElementById('statusText').textContent = text;
+  document.getElementById('scanTrack').className = 'scan-track' + (cls === 'running' ? ' on' : '');
+}
+
+function pollJob(id) {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(function () {
+    fetch('/api/scan/' + id).then(r => r.json()).then(data => {
+      if (data.status === 'running' || data.status === 'pending') {
+        setStatus('running', 'scanning ' + (data.target || '') + ' — depth depends on port range x thread count ...');
+      } else if (data.status === 'done') {
+        clearInterval(pollTimer);
+        setStatus('done', 'scan complete -> ' + (data.target || ''));
+        document.getElementById('verline').textContent = '// scan complete';
+        document.getElementById('startBtn').disabled = false;
+        renderResults(data.hosts || []);
+        loadHistory();
+      }
+    }).catch(() => {});
+  }, 1200);
+}
+
+function renderResults(hosts) {
+  const stats = { hosts: 0, ports: 0, crit: 0, high: 0, med: 0, low: 0 };
+  const resultsEl = document.getElementById('results');
+  resultsEl.innerHTML = '';
+
+  if (!hosts.length) {
+    resultsEl.innerHTML = '<div class="empty"><span class="big">[ empty ]</span>no live hosts found in range.</div>';
+    document.getElementById('stats').className = 'stats';
+    return;
+  }
+
+  hosts.forEach(host => {
+    stats.hosts++;
+    stats.ports += host.ports.length;
+
+    const div = document.createElement('div');
+    div.className = 'host';
+    let html = '<div class="hh">' + esc(host.ip) + '<span class="meta">' + host.ports.length + ' open / ' + host.findings.length + ' findings</span></div>';
+    html += '<div class="body">';
+    html += '<table><thead><tr><th>Port</th><th>Service</th><th>Version / Banner</th></tr></thead><tbody>';
+    host.ports.forEach(p => {
+      html += '<tr><td class="port">' + esc(p.port) + '</td><td class="svc">' + esc(p.service) + '</td><td class="ver">' + esc(p.version) + '</td></tr>';
+    });
+    html += '</tbody></table>';
+
+    if (host.findings.length > 0) {
+      html += '<div class="sub-h">Findings — ' + host.findings.length + '</div>';
+      host.findings.forEach(f => {
+        const cls = sevClass(f.severity);
+        if (cls === 'crit') stats.crit++; else if (cls === 'high') stats.high++;
+        else if (cls === 'med') stats.med++; else if (cls === 'low') stats.low++;
+        html += '<div class="find ' + cls + '">';
+        html += '<div class="top"><span class="tag ' + cls + '">' + esc(f.severity) + '</span>';
+        html += '<span class="ttl">' + esc(f.title) + '</span>';
+        html += '<span class="id">[' + esc(f.id) + ' / ' + esc(f.confidence) + ']</span></div>';
+        html += '<dl>';
+        html += '<dt>desc</dt><dd>' + esc(f.description) + '</dd>';
+        html += '<dt>evidence</dt><dd>' + esc(f.evidence) + '</dd>';
+        html += '<dt>fix</dt><dd>' + esc(f.remediation) + '</dd>';
+        html += '</dl></div>';
+      });
+    } else {
+      html += '<div class="clean">// no findings on this host</div>';
+    }
+    html += '</div>';
+    div.innerHTML = html;
+    resultsEl.appendChild(div);
+  });
+
+  document.getElementById('stats').className = 'stats on';
+  document.getElementById('statHosts').textContent = stats.hosts;
+  document.getElementById('statPorts').textContent = stats.ports;
+  document.getElementById('statCrit').textContent = stats.crit;
+  document.getElementById('statHigh').textContent = stats.high;
+  document.getElementById('statMed').textContent = stats.med;
+  document.getElementById('statLow').textContent = stats.low;
+}
+
+function loadHistory() {
+  fetch('/api/jobs').then(r => r.json()).then(jobs => {
+    const el = document.getElementById('historyList');
+    if (!jobs.length) { el.innerHTML = '<div class="empty" style="padding:1.4rem .5rem;">no scans this session</div>'; return; }
+    el.innerHTML = '';
+    jobs.slice().reverse().forEach(j => {
+      const row = document.createElement('div');
+      row.className = 'hist-item';
+      const sc = j.status === 'done' ? 'done' : 'running';
+      row.innerHTML = '<span class="t">' + esc(j.target) + '</span><span class="s ' + sc + '">' + esc(j.status) + '</span>';
+      row.addEventListener('click', function () {
+        setStatus(sc, 'viewing scan -> ' + j.target);
+        fetch('/api/scan/' + j.id).then(r => r.json()).then(data => {
+          if (data.status === 'done') renderResults(data.hosts || []);
+        });
+      });
+      el.appendChild(row);
+    });
+  }).catch(() => {});
+}
+
+loadHistory();
+</script>
+</body>
+</html>
